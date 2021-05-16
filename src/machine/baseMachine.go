@@ -62,7 +62,6 @@ func (m *BaseMachine) dataPath() string {
 
 func (m *BaseMachine) initWorkSpace(machine Machine) {
 	m.LogNormal("start initializing workspace")
-	// TODO: sync test data
 	// calculate test case count
 	m.LogNormal(fmt.Sprintf("open testcase directory %s", m.dataPath()))
 	testCases, err := ioutil.ReadDir(m.dataPath())
@@ -100,7 +99,6 @@ func (m *BaseMachine) initWorkSpace(machine Machine) {
 	m.LogNormal("work directory exist")
 
 	// save source code
-	// TODO: modify source code path
 	sourceCodePath := fmt.Sprintf("%s%d/%s", config.GlobalConfig.Path.Work, m.Rid, machine.sourceCodeFileName())
 	m.LogNormal("save source code to " + sourceCodePath)
 	err = ioutil.WriteFile(sourceCodePath, []byte(m.Code), os.ModePerm)
@@ -191,7 +189,6 @@ func (m *BaseMachine) doJudge(machine Machine, inputFileName string) {
 	if err != nil {
 		m.LogError("open standard input file fail")
 		m.LogNormal(fmt.Sprintf("judge %s complete", inputFileName))
-		// TODO: log standard input file not exist
 		return
 	}
 	defer func() {
@@ -201,7 +198,6 @@ func (m *BaseMachine) doJudge(machine Machine, inputFileName string) {
 
 	outputFile, err := os.Create(fmt.Sprintf("%s/%s.out", m.workPath(), inputFileName[:strings.LastIndex(inputFileName, ".in")]))
 	if err != nil {
-		// TODO: log output file create file
 		m.LogError("create output file fail")
 		return
 	}
@@ -316,28 +312,17 @@ func (m *BaseMachine) judge(machine Machine) {
 	if m.Status == model.JudgeStatusWaitingRunning {
 		m.Status = model.JudgeStatusAccept
 		m.LogNormal("judge accept")
-	} else {
-		m.timeCost = -1
-		m.memoryCost = -1
 	}
 	m.LogNormal("judge complete")
 }
 
 func (m *BaseMachine) sendStatus() {
-	var timeCost, memoryCost *int64
-	if m.timeCost > 0 {
-		tmp := int64(m.timeCost)
-		timeCost = &tmp
-	}
-	if m.memoryCost > 0 {
-		tmp := int64(m.memoryCost)
-		memoryCost = &tmp
-	}
 	network.SendStatus(model.StatusModel{
 		Rid:                m.Rid,
+		Pid:                m.Pid,
 		Status:             m.Status,
-		TimeCost:           timeCost,
-		MemoryCost:         memoryCost,
+		TimeCost:           int64(m.timeCost),
+		MemoryCost:         int64(m.memoryCost),
 		CompilationMessage: m.compilationMessage,
 		//Percent:
 	})
@@ -346,6 +331,8 @@ func (m *BaseMachine) sendStatus() {
 func (m *BaseMachine) Run(machine Machine) {
 	m.LogNormal("mission start")
 	m.Status = model.JudgeStatusCompiling
+	m.timeCost = -1
+	m.memoryCost = -1
 	m.sendStatus()
 	m.initWorkSpace(machine)
 	m.compile(machine)

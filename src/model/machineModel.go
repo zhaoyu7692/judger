@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"utils"
 )
@@ -44,7 +45,7 @@ type MissionModel struct {
 	//caseCount   int64
 }
 
-func (m *MissionModel) LogFetchSuccess()  {
+func (m *MissionModel) LogFetchSuccess() {
 
 }
 
@@ -54,17 +55,47 @@ func (m *MissionModel) LogDispatchSuccess() {
 
 type StatusModel struct {
 	Rid                int64       `json:"rid"`
+	Pid                int64       `json:"pid"`
 	Status             JudgeStatus `json:"status"`
-	TimeCost           *int64      `json:"time_cost"`
-	MemoryCost         *int64      `json:"memory_cost"`
-	CompilationMessage string      `json:"compilation_message"`
+	TimeCost           int64       `json:"time_cost,omitempty"`
+	MemoryCost         int64       `json:"memory_cost,omitempty"`
+	CompilationMessage string      `json:"compilation_message,omitempty"`
 	//Percent float32     `json:"percent"`
 }
 
+func (s StatusModel) MarshalJSON() ([]byte, error) {
+	type Alias StatusModel
+	var timeCost, memoryCost *int64
+	if s.TimeCost >= 0 {
+		timeCost = &s.TimeCost
+	}
+	if s.MemoryCost >= 0 {
+		memoryCost = &s.MemoryCost
+	}
+
+	return json.Marshal(&struct {
+		Alias
+		TimeCost   *int64 `json:"time_cost,omitempty"`
+		MemoryCost *int64 `json:"memory_cost,omitempty"`
+	}{
+		Alias:      Alias(s),
+		TimeCost:   timeCost,
+		MemoryCost: memoryCost,
+	})
+}
+
 func (s *StatusModel) LogTrySend() {
-	utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Rid:%d] [Status:%d] try send", s.Rid, s.Status))
+	if s.Status == JudgeStatusAccept {
+		utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Rid:%d] [Status:%d] [TimeCost:%d] [MemoryCost:%d] try send", s.Rid, s.Status, s.TimeCost, s.MemoryCost))
+	} else {
+		utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Rid:%d] [Status:%d] try send", s.Rid, s.Status))
+	}
 }
 
 func (s *StatusModel) LogSendSuccess() {
-	utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Rid:%d] [Status:%d] send success", s.Rid, s.Status))
+	if s.Status == JudgeStatusAccept {
+		utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Rid:%d] [Status:%d] [TimeCost:%d] [MemoryCost:%d] send success", s.Rid, s.Status, s.TimeCost, s.MemoryCost))
+	} else {
+		utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Rid:%d] [Status:%d] send success", s.Rid, s.Status))
+	}
 }

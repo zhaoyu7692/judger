@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"config"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"model"
 	"net/http"
@@ -13,12 +14,21 @@ import (
 )
 
 var url string
+
 var judgingCount int
-var statusList []model.StatusModel
-var missionList []model.MissionModel
+var judgingStatus map[int64]int64
 var countLock sync.Mutex
+
+var statusList []model.StatusModel
 var statusLock sync.Mutex
+
+var missionList []model.MissionModel
 var missionLock sync.Mutex
+
+var lockedMission map[int64][]model.MissionModel
+var lockedMissionLock sync.Mutex
+
+var syncingPid map[int64]bool
 
 type MissionRequestModel struct {
 	Status       []model.StatusModel `json:"status"`
@@ -31,6 +41,9 @@ type MissionResponseModel struct {
 
 func init() {
 	judgingCount = 0
+	syncingPid = map[int64]bool{}
+	judgingStatus = map[int64]int64{}
+	lockedMission = map[int64][]model.MissionModel{}
 	url = "http://" + config.GlobalConfig.Server.Host + ":" + config.GlobalConfig.Server.Port + "/api/core/j2s/"
 }
 
@@ -42,6 +55,8 @@ func FetchMission() *model.MissionModel {
 		missionList = missionList[1:]
 		countLock.Lock()
 		judgingCount++
+		count := judgingStatus[mission.Pid]
+		judgingStatus[mission.Pid] = count + 1
 		countLock.Unlock()
 	}
 	missionLock.Unlock()
@@ -52,25 +67,36 @@ func SendStatus(statusModel model.StatusModel) {
 	statusLock.Lock()
 	statusList = append(statusList, statusModel)
 	switch statusModel.Status {
-	case model.JudgeStatusSystemError:
-	case model.JudgeStatusCompilationError:
-	case model.JudgeStatusCompilationTimeLimitExceeded:
-	case model.JudgeStatusTimeLimitExceeded:
-	case model.JudgeStatusMemoryLimitExceeded:
-	case model.JudgeStatusOutputLimitExceeded:
-	case model.JudgeStatusRuntimeError:
-	case model.JudgeStatusPresentationError:
-	case model.JudgeStatusWrongAnswer:
-	case model.JudgeStatusAccept:
+	case model.JudgeStatusSystemError,
+		model.JudgeStatusCompilationError,
+		model.JudgeStatusCompilationTimeLimitExceeded,
+		model.JudgeStatusTimeLimitExceeded,
+		model.JudgeStatusMemoryLimitExceeded,
+		model.JudgeStatusOutputLimitExceeded,
+		model.JudgeStatusRuntimeError,
+		model.JudgeStatusPresentationError,
+		model.JudgeStatusWrongAnswer,
+		model.JudgeStatusAccept:
 		countLock.Lock()
 		judgingCount--
+		count := judgingStatus[statusModel.Pid]
+		judgingStatus[statusModel.Pid] = count - 1
+		if judgingStatus[statusModel.Pid] == 0 {
+			SyncTestCase(statusModel.Pid)
+		}
 		countLock.Unlock()
 	}
 	statusLock.Unlock()
 }
 
-func LogNormal(content string) {
-	utils.Log(utils.LogTypeNormal, content)
+func LogNormal(pid int64, content string) {
+	utils.Log(utils.LogTypeNormal, fmt.Sprintf("[Pid:%d] %s", pid, content))
+}
+func LogWarning(pid int64, content string) {
+	utils.Log(utils.LogTypeWarning, fmt.Sprintf("[Pid:%d] %s", pid, content))
+}
+func LogError(pid int64, content string) {
+	utils.Log(utils.LogTypeError, fmt.Sprintf("[Pid:%d] %s", pid, content))
 }
 
 func fetchMissionAndSendStatus() {
@@ -99,15 +125,49 @@ func fetchMissionAndSendStatus() {
 				}
 				statusList = statusList[sendCount:]
 				statusLock.Unlock()
-				missionLock.Lock()
 				for _, mission := range responseModel.Problems {
-					missionList = append(missionList, mission)
+					if needSync, _ := CheckTestCaseWithPid(mission.Pid); needSync == true {
+						lockedMissionLock.Lock()
+						lockedMission[mission.Pid] = append(lockedMission[mission.Pid], mission)
+						lockedMissionLock.Unlock()
+						if judgingStatus[mission.Pid] == 0 {
+							SyncTestCase(mission.Pid)
+						}
+					} else {
+						missionLock.Lock()
+						missionList = append(missionList, mission)
+						missionLock.Unlock()
+					}
 				}
-				missionLock.Unlock()
 			}
 		}
 		_ = response.Body.Close()
 	}
+}
+
+var syncLock sync.Mutex
+
+func SyncTestCase(pid int64) {
+	syncLock.Lock()
+	defer syncLock.Unlock()
+	if syncingPid[pid] {
+		return
+	}
+	syncingPid[pid] = true
+
+	go SyncTestCaseWithPid(pid, func() {
+		lockedMissionLock.Lock()
+		missionLock.Lock()
+		for _, mission := range lockedMission[pid] {
+			missionList = append(missionList, mission)
+		}
+		lockedMission[pid] = lockedMission[pid][0:0]
+		missionLock.Unlock()
+		lockedMissionLock.Unlock()
+		syncLock.Lock()
+		syncingPid[pid] = true
+		syncLock.Unlock()
+	})
 }
 
 func StartNetworkModule() {
