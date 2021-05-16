@@ -10,6 +10,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"syscall"
 	"time"
 )
 
@@ -79,11 +80,15 @@ func SyncTestCaseWithPid(pid int64, callback func()) {
 		callback()
 	}
 	LogNormal(pid, "start sync test case")
-	warredCallback := func() {
-		LogNormal(pid, "sync test case complete")
-		callback()
-	}
 	if needSync, model := CheckTestCaseWithPid(pid); needSync == true {
+		if err := syscall.Access(fmt.Sprintf("%s%d", config.GlobalConfig.Path.Data, pid), 0); err != nil {
+			if err := os.MkdirAll(fmt.Sprintf("%s%d", config.GlobalConfig.Path.Data, pid), os.ModePerm); err != nil {
+				time.Sleep(30 * time.Second)
+				LogError(pid, fmt.Sprintf("create directory fail, retry after 30 senonds"))
+				SyncTestCaseWithPid(pid, callback)
+				return
+			}
+		}
 		for _, filename := range model.Filenames {
 			LogNormal(pid, "download "+filename)
 			response, err := http.Get(fmt.Sprintf("%s?pid=%d&filename=%s", downloadURL, pid, filename))
@@ -120,7 +125,7 @@ func SyncTestCaseWithPid(pid int64, callback func()) {
 			}
 		}
 		LogNormal(pid, "sync test case complete")
-		warredCallback()
+		callback()
 	}
 	return
 }
