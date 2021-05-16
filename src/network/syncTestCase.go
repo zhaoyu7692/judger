@@ -37,7 +37,7 @@ func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 	LogNormal(pid, "start check test case")
 	success := false
 	defer func() {
-		LogNormal(pid, fmt.Sprintf("[NeedSync:%d] check test case complete", success))
+		LogNormal(pid, fmt.Sprintf("[NeedSync:%v] check test case complete", success))
 	}()
 	client := http.Client{Timeout: 30 * time.Second}
 	testCases, err := ioutil.ReadDir(config.GlobalConfig.Path.Data + strconv.FormatInt(pid, 10))
@@ -63,7 +63,7 @@ func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 		if body, err := ioutil.ReadAll(response.Body); err == nil {
 			responseModel := syncTestCaseResponseModel{}
 			if err := json.Unmarshal(body, &responseModel); err == nil {
-				if len(responseModel.Filenames) > 0 {
+				if len(responseModel.Filenames) > 0 || len(responseModel.RemoveFilenames) > 0 {
 					missions[pid] = true
 				}
 				success = true
