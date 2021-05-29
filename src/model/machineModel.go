@@ -9,10 +9,11 @@ import (
 type Language int8
 
 const (
-	LanguageC    Language = 0
-	LanguageCpp           = 1
-	LanguageJava          = 2
-	LanguageGo            = 3
+	LanguageC      Language = 0
+	LanguageCpp    Language = 1
+	LanguageJava   Language = 2
+	LanguagePython Language = 3
+	LanguageGo     Language = 4
 )
 
 type JudgeStatus int8

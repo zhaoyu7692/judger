@@ -11,7 +11,7 @@ func main() {
 	go func() {
 		network.StartNetworkModule()
 	}()
-	for i := 0; ; i++ {
+	for ; ;  {
 		time.Sleep(time.Millisecond)
 		mission := network.FetchMission()
 		if mission == nil {

@@ -130,6 +130,7 @@ func fetchMissionAndSendStatus() {
 						lockedMissionLock.Lock()
 						lockedMission[mission.Pid] = append(lockedMission[mission.Pid], mission)
 						lockedMissionLock.Unlock()
+						LogNormal(mission.Pid, fmt.Sprintf("judging count: %d", judgingStatus[mission.Pid]))
 						if judgingStatus[mission.Pid] == 0 {
 							SyncTestCase(mission.Pid)
 						}
@@ -150,7 +151,7 @@ var syncLock sync.Mutex
 func SyncTestCase(pid int64) {
 	syncLock.Lock()
 	defer syncLock.Unlock()
-	if syncingPid[pid] {
+	if syncingPid[pid] || missions[pid] == false {
 		return
 	}
 	syncingPid[pid] = true

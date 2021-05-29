@@ -156,7 +156,7 @@ func (m *BaseMachine) compile(machine Machine) {
 					m.LogNormal("compiling success")
 					m.Status = model.JudgeStatusWaitingRunning
 				}
-			case 1:
+			case 1, 2:
 				{
 					m.LogNormal("compiling error")
 					m.Status = model.JudgeStatusCompilationError
@@ -243,7 +243,7 @@ func (m *BaseMachine) doJudge(machine Machine, inputFileName string) {
 			timeCost = utils.Max(timeCost, utils.GetTimeUsed(cmd.Process.Pid))
 			if timeCost > m.TimeLimit {
 				_ = cmd.Process.Kill()
-				m.LogNormal("judge time limit exceeded")
+				m.LogNormal("judge time limit exceeded " + string(rune(timeCost)) + "ms")
 				m.Status = model.JudgeStatusTimeLimitExceeded
 				return
 			}
@@ -281,6 +281,18 @@ func (m *BaseMachine) compareOutputFile(inputFileName string) {
 	}
 	output := string(outputContent)
 	stdOutput := string(stdOutputContent)
+	for i := len(output) - 1; i >= 0; i-- {
+		if output[i] != '\r' && output[i] != ' ' && output[i] != '\n' {
+			output = output[:i+1]
+			break
+		}
+	}
+	for i := len(stdOutput) - 1; i >= 0; i-- {
+		if stdOutput[i] != '\r' && stdOutput[i] != ' ' && stdOutput[i] != '\n' {
+			stdOutput = stdOutput[:i+1]
+			break
+		}
+	}
 	output = strings.ReplaceAll(output, "\r", "")
 	stdOutput = strings.ReplaceAll(stdOutput, "\r", "")
 	if strings.Compare(output, stdOutput) != 0 {
@@ -301,11 +313,11 @@ func (m *BaseMachine) compareOutputFile(inputFileName string) {
 func (m *BaseMachine) judge(machine Machine) {
 	m.LogNormal("start judge")
 	for _, inputFileName := range m.inputFiles {
-		if m.Status != model.JudgeStatusWaitingRunning {
+		if m.Status != model.JudgeStatusWaitingRunning && m.Status != model.JudgeStatusPresentationError {
 			return
 		}
 		m.doJudge(machine, inputFileName)
-		if m.Status == model.JudgeStatusWaitingRunning {
+		if m.Status == model.JudgeStatusWaitingRunning || m.Status == model.JudgeStatusPresentationError {
 			m.compareOutputFile(inputFileName)
 		}
 	}
@@ -317,12 +329,17 @@ func (m *BaseMachine) judge(machine Machine) {
 }
 
 func (m *BaseMachine) sendStatus() {
+	timeCost, memoryCost := -1, -1
+	if m.Status == model.JudgeStatusAccept {
+		timeCost = m.timeCost
+		memoryCost = m.memoryCost
+	}
 	network.SendStatus(model.StatusModel{
 		Rid:                m.Rid,
 		Pid:                m.Pid,
 		Status:             m.Status,
-		TimeCost:           int64(m.timeCost),
-		MemoryCost:         int64(m.memoryCost),
+		TimeCost:           int64(timeCost),
+		MemoryCost:         int64(memoryCost),
 		CompilationMessage: m.compilationMessage,
 		//Percent:
 	})

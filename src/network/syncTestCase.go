@@ -36,9 +36,11 @@ type syncTestCaseResponseModel struct {
 
 func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 	LogNormal(pid, "start check test case")
-	success := false
+	if missions[pid] {
+		return false, nil
+	}
 	defer func() {
-		LogNormal(pid, fmt.Sprintf("[NeedSync:%v] check test case complete", success))
+		LogNormal(pid, fmt.Sprintf("[NeedSync:%v] check test case complete", missions[pid]))
 	}()
 	client := http.Client{Timeout: 30 * time.Second}
 	testCases, err := ioutil.ReadDir(config.GlobalConfig.Path.Data + strconv.FormatInt(pid, 10))
@@ -66,9 +68,9 @@ func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 			if err := json.Unmarshal(body, &responseModel); err == nil {
 				if len(responseModel.Filenames) > 0 || len(responseModel.RemoveFilenames) > 0 {
 					missions[pid] = true
+					return true, &responseModel
 				}
-				success = true
-				return true, &responseModel
+				return false, nil
 			}
 		}
 	}
@@ -78,6 +80,7 @@ func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 func SyncTestCaseWithPid(pid int64, callback func()) {
 	if missions[pid] == false {
 		callback()
+		return
 	}
 	LogNormal(pid, "start sync test case")
 	if needSync, model := CheckTestCaseWithPid(pid); needSync == true {
