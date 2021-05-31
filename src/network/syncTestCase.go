@@ -36,17 +36,20 @@ type syncTestCaseResponseModel struct {
 
 func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 	LogNormal(pid, "start check test case")
-	if missions[pid] {
-		return false, nil
-	}
+	//if missions[pid] {
+	//	return false, nil
+	//}
 	defer func() {
 		LogNormal(pid, fmt.Sprintf("[NeedSync:%v] check test case complete", missions[pid]))
 	}()
 	client := http.Client{Timeout: 30 * time.Second}
 	testCases, err := ioutil.ReadDir(config.GlobalConfig.Path.Data + strconv.FormatInt(pid, 10))
 	if err != nil {
-		LogError(pid, "open testcase directory fail")
-		return false, nil
+		err := os.MkdirAll(config.GlobalConfig.Path.Data+strconv.FormatInt(pid, 10), os.ModePerm)
+		if err != nil {
+			LogError(pid, "open testcase directory fail")
+			return false, nil
+		}
 	}
 	requestModel := syncTestCaseRequestModel{
 		Pid: pid,

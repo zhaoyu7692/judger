@@ -65,7 +65,7 @@ func initGlobalConfig(sr *reflect.Value, file *goconfig.ConfigFile) {
 }
 
 func init() {
-	file, err := goconfig.LoadConfigFile("/home/zhaoyu/Dev/GOJudger/openjudge-judger.conf")
+	file, err := goconfig.LoadConfigFile("/home/zhaoyu/桌面/OpenJudge/GOJudger/openjudge-judger.conf")
 	if err != nil {
 		panic(err)
 	}

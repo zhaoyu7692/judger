@@ -243,7 +243,7 @@ func (m *BaseMachine) doJudge(machine Machine, inputFileName string) {
 			timeCost = utils.Max(timeCost, utils.GetTimeUsed(cmd.Process.Pid))
 			if timeCost > m.TimeLimit {
 				_ = cmd.Process.Kill()
-				m.LogNormal("judge time limit exceeded " + string(rune(timeCost)) + "ms")
+				m.LogNormal("judge time limit exceeded " + strconv.FormatInt(int64(timeCost), 10)+ "ms")
 				m.Status = model.JudgeStatusTimeLimitExceeded
 				return
 			}
