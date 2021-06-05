@@ -6,7 +6,6 @@ import (
 	"network"
 	"time"
 )
-
 func main() {
 	go func() {
 		network.StartNetworkModule()

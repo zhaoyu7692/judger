@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"github.com/unknwon/goconfig"
 	"reflect"
@@ -19,7 +20,7 @@ type Path struct {
 }
 
 type Config struct {
-	Path Path
+	Path   Path
 	Server Server
 }
 
@@ -64,8 +65,21 @@ func initGlobalConfig(sr *reflect.Value, file *goconfig.ConfigFile) {
 	}
 }
 
+var configFilePath, logFilePath string
+
+func GetConfigFilePath() string {
+	return configFilePath
+}
+func GetLogFilePath() string {
+	return logFilePath
+}
+
 func init() {
-	file, err := goconfig.LoadConfigFile("/home/zhaoyu/桌面/OpenJudge/GOJudger/openjudge-judger.conf")
+	flag.StringVar(&configFilePath, "conf", "/home/openjudge/conf/openjudge.conf", "配置文件路径")
+	flag.StringVar(&logFilePath, "log", "/home/openjudge/conf/openjudge.log", "日志文件路径")
+	flag.Parse()
+	//file, err := goconfig.LoadConfigFile("/home/zhaoyu/桌面/OpenJudge/GOJudger/openjudge-judger.conf")
+	file, err := goconfig.LoadConfigFile(configFilePath)
 	if err != nil {
 		panic(err)
 	}
