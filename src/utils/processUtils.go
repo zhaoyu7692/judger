@@ -18,7 +18,7 @@ func GetTimeUsed(pid int) int {
 	}
 	return -1
 }
-// KB
+// KBs
 func GetMemoryUsed(pid int) int {
 	if content, err := ioutil.ReadFile("/proc/" + strconv.Itoa(pid) + "/statm"); err == nil {
 		reg := regexp.MustCompile("\\d+ (\\d+) \\d+ \\d+ \\d+ \\d+ \\d+")
