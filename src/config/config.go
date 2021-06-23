@@ -70,6 +70,7 @@ var configFilePath, logFilePath string
 func GetConfigFilePath() string {
 	return configFilePath
 }
+
 func GetLogFilePath() string {
 	return logFilePath
 }

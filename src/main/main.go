@@ -5,6 +5,7 @@ import (
 	"model"
 	"network"
 	"time"
+	"utils"
 )
 func main() {
 	go func() {
@@ -16,7 +17,6 @@ func main() {
 		if mission == nil {
 			continue
 		}
-		var m machine.Machine
 		baseMachine := machine.BaseMachine{
 			Rid:         mission.Rid,
 			Pid:         mission.Pid,
@@ -25,6 +25,7 @@ func main() {
 			TimeLimit:   mission.TimeLimit,
 			MemoryLimit: mission.MemoryLimit,
 		}
+		var m machine.Machine
 		switch mission.Language {
 		case model.LanguageC:
 			m = &machine.CMachine{
@@ -43,7 +44,7 @@ func main() {
 				BaseMachine: baseMachine,
 			}
 		default:
-			// TODO: log language error
+			utils.Log(utils.LogTypeError, "language error")
 		}
 		go m.Run(m)
 	}

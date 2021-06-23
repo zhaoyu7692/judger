@@ -67,6 +67,7 @@ func (m *BaseMachine) initWorkSpace(machine Machine) {
 	testCases, err := ioutil.ReadDir(m.dataPath())
 	if err != nil {
 		m.Status = model.JudgeStatusSystemError
+		m.LogError(err.Error())
 		m.LogError("open testcase directory fail")
 		return
 	}

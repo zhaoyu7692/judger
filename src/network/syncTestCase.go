@@ -47,6 +47,7 @@ func CheckTestCaseWithPid(pid int64) (bool, *syncTestCaseResponseModel) {
 	if err != nil {
 		err := os.MkdirAll(config.GlobalConfig.Path.Data+strconv.FormatInt(pid, 10), os.ModePerm)
 		if err != nil {
+			LogError(pid, err.Error())
 			LogError(pid, "open testcase directory fail")
 			return false, nil
 		}
